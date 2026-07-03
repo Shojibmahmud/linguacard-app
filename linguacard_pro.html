@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinguaCard Pro - Interactive Language Flashcards</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+        /* Touch Gesture Smoothness */
+        .swipe-transition {
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        }
+        /* Custom Scrollbar for better UX */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-100 selection:text-brand-700">
+
+    <!-- App Navigation Header -->
+    <header class="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-100 px-4 py-3">
+        <div class="max-w-5xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-400 flex items-center justify-center text-white shadow-md shadow-brand-100">
+                    <i class="fa-solid fa-layer-group text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-slate-900">LinguaCard<span class="text-brand-600">Pro</span></h1>
+                    <p class="text-[10px] text-slate-500 font-medium tracking-wide uppercase">Spaced Repetition Engine</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- Streak Indicator -->
+                <div class="flex items-center space-x-1.5 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-full border border-orange-100 text-xs font-semibold shadow-sm">
+                    <i class="fa-solid fa-fire animate-pulse text-sm"></i>
+                    <span id="streak-counter">3 Day Streak</span>
+                </div>
+                <!-- Premium Settings Trigger -->
+                <button onclick="openConfigModal()" class="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
+        
+        <!-- Sidebar: Decks and Statistics -->
+        <section class="w-full md:w-80 flex-shrink-0 space-y-5">
+            <!-- Quick Stat Cards -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <p class="text-xs text-slate-400 font-medium">Total Reviewed</p>
+                    <p class="text-2xl font-bold text-slate-800 mt-1" id="stat-reviewed">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <p class="text-xs text-slate-400 font-medium">Mastery Rate</p>
+                    <p class="text-2xl font-bold text-slate-800 mt-1" id="stat-mastery">0%</p>
+                </div>
+            </div>
+
+            <!-- Deck Selector Section -->
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-bold text-slate-900 text-sm tracking-wide uppercase">My Decks</h2>
+                    <button onclick="openNewDeckModal()" class="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-plus"></i> New Deck
+                    </button>
+                </div>
+
+                <!-- Deck List Container -->
+                <div class="space-y-2.5 max-h-[350px] overflow-y-auto pr-1" id="deck-list">
+                    <!-- Dynamic Loading Injector -->
+                </div>
+            </div>
+
+            <!-- Import/Export Tools -->
+            <div class="bg-slate-100 rounded-2xl p-4 flex flex-col gap-2 border border-slate-200/50">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Backup & Tools</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="exportData()" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition">
+                        <i class="fa-solid fa-download text-[10px]"></i> Export
+                    </button>
+                    <label class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer text-center">
+                        <i class="fa-solid fa-upload text-[10px]"></i> Import
+                        <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(event)">
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Content Area: Flashcard Deck Study Workspace -->
+        <section class="flex-grow flex flex-col space-y-4">
+            <!-- Deck Status Display -->
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                <div>
+                    <h2 class="text-xl font-extrabold text-slate-900" id="active-deck-title">Loading Deck...</h2>
+                    <p class="text-xs text-slate-500 mt-0.5" id="active-deck-desc">No target language assigned yet.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="openAddCardModal()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2.5 px-4 rounded-xl flex items-center gap-2 shadow-sm transition-all duration-200">
+                        <i class="fa-solid fa-plus"></i> Add Card
+                    </button>
+                    <button onclick="deleteActiveDeck()" class="border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold p-2.5 rounded-xl transition" title="Delete current deck">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Interactive Study Frame -->
+            <div class="flex-grow flex flex-col items-center justify-center min-h-[400px] bg-slate-100 rounded-3xl p-6 relative overflow-hidden border border-slate-200/40">
+                
+                <!-- Deck Progress Indicator -->
+                <div class="w-full max-w-md mb-6 flex items-center justify-between text-xs text-slate-500">
+                    <span class="font-medium">Progress Bar</span>
+                    <span class="font-bold text-slate-700" id="card-index-indicator">0 / 0</span>
+                </div>
+                <div class="w-full max-w-md bg-slate-200 rounded-full h-1.5 mb-8 overflow-hidden">
+                    <div class="bg-brand-500 h-full w-0 transition-all duration-300" id="study-progress-bar"></div>
+                </div>
+
+                <!-- Empty State Handler -->
+                <div id="deck-empty-state" class="hidden text-center max-w-xs space-y-4">
+                    <div class="w-16 h-16 rounded-full bg-slate-200/70 flex items-center justify-center mx-auto text-slate-400">
+                        <i class="fa-solid fa-layer-group text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800">Empty Flashcard Deck</h3>
+                        <p class="text-xs text-slate-500 mt-1">Ready to scale up your vocab? Create your very first card to kick off your practice session.</p>
+                    </div>
+                    <button onclick="openAddCardModal()" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold py-2 px-4 rounded-xl shadow-md transition">
+                        Create Card
+                    </button>
+                </div>
+
+                <!-- Active Leitner Card Deck Box -->
+                <div id="card-container" class="relative w-full max-w-sm h-64 perspective-1000 cursor-pointer hidden">
+                    <!-- The Flip wrapper -->
+                    <div id="flashcard" class="w-full h-full transform-style-3d swipe-transition relative rounded-2xl shadow-xl shadow-slate-200/50">
+                        
+                        <!-- Front Face (Target Vocabulary) -->
+                        <div class="absolute inset-0 bg-white border border-slate-100 rounded-2xl p-6 flex flex-col justify-between backface-hidden">
+                            <div class="flex items-center justify-between w-full">
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase" id="card-lang-tag">ENG</span>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="speakText(event, 'front')" class="w-8 h-8 rounded-full bg-slate-50 hover:bg-brand-50 text-slate-500 hover:text-brand-600 flex items-center justify-center transition" title="Speak Word">
+                                        <i class="fa-solid fa-volume-high text-xs"></i>
+                                    </button>
+                                    <span class="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg text-[10px] font-bold" id="card-box-tag">Box 1</span>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center my-auto space-y-2">
+                                <h3 class="text-3xl font-extrabold text-slate-900 tracking-tight" id="card-front-word">Loading...</h3>
+                                <p class="text-xs text-slate-400 italic font-medium" id="card-front-hint">Tap to flip & reveal meaning</p>
+                            </div>
+
+                            <div class="text-center text-[10px] text-slate-400 font-semibold tracking-wide uppercase">
+                                <i class="fa-solid fa-arrows-left-right text-xs"></i> SWIPE LEFT (HARD) OR RIGHT (KNOW IT)
+                            </div>
+                        </div>
+
+                        <!-- Back Face (Translation and details) -->
+                        <div class="absolute inset-0 bg-gradient-to-br from-brand-600 to-emerald-700 text-white rounded-2xl p-6 flex flex-col justify-between backface-hidden rotate-y-180 shadow-2xl">
+                            <div class="flex items-center justify-between w-full">
+                                <span class="bg-white/20 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase">Translation</span>
+                                <button onclick="speakText(event, 'back')" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition" title="Speak Word">
+                                    <i class="fa-solid fa-volume-high text-xs"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="text-center my-auto space-y-2">
+                                <h3 class="text-3xl font-bold tracking-tight" id="card-back-translation">...</h3>
+                                <p class="text-xs text-white/80 max-w-[250px] mx-auto line-clamp-2" id="card-back-sentence">No context sentence provided.</p>
+                            </div>
+
+                            <div class="text-center text-[10px] text-white/60 font-medium italic">
+                                Tap card again to view front word
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Desktop Manual Control Interface -->
+                <div id="deck-action-controls" class="mt-8 flex items-center justify-center gap-4 w-full max-w-sm hidden">
+                    <button onclick="markCardConfidence(false)" class="flex-1 bg-white hover:bg-red-50 text-red-600 border border-slate-200 hover:border-red-200 py-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 shadow-sm active:scale-95">
+                        <i class="fa-solid fa-circle-xmark text-lg"></i>
+                        <span class="text-xs font-bold">Hard / Study</span>
+                    </button>
+                    
+                    <button onclick="flipCard()" class="w-14 h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center transition active:scale-90 shadow-md shadow-slate-300" title="Flip Card">
+                        <i class="fa-solid fa-rotate text-lg"></i>
+                    </button>
+
+                    <button onclick="markCardConfidence(true)" class="flex-1 bg-white hover:bg-green-50 text-brand-600 border border-slate-200 hover:border-green-200 py-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 shadow-sm active:scale-95">
+                        <i class="fa-solid fa-circle-check text-lg"></i>
+                        <span class="text-xs font-bold">Know It!</span>
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Backdrop Element -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-all duration-300">
+        
+        <!-- NEW DECK MODAL -->
+        <div id="deck-modal" class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative hidden transform scale-95 opacity-0 transition-all duration-300">
+            <button onclick="closeActiveModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Create Learning Deck</h3>
+            <p class="text-xs text-slate-500 mb-4">Set up a customized target vocabulary language deck.</p>
+            
+            <form onsubmit="handleCreateDeck(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Deck Title</label>
+                    <input type="text" id="new-deck-title" required placeholder="e.g., Spanish Basics" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Target Language Tag</label>
+                    <select id="new-deck-lang" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm bg-white">
+                        <option value="es-ES">Spanish (Spain)</option>
+                        <option value="fr-FR">French</option>
+                        <option value="de-DE">German</option>
+                        <option value="it-IT">Italian</option>
+                        <option value="ja-JP">Japanese</option>
+                        <option value="ko-KR">Korean</option>
+                        <option value="pt-BR">Portuguese (Brazil)</option>
+                        <option value="zh-CN">Chinese (Mandarin)</option>
+                        <option value="en-US">English (US)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Brief Description</label>
+                    <input type="text" id="new-deck-desc" placeholder="e.g., Top 100 essential basic phrases" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+                </div>
+                <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs transition">
+                    Generate Deck
+                </button>
+            </form>
+        </div>
+
+        <!-- NEW CARD MODAL -->
+        <div id="card-modal" class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative hidden transform scale-95 opacity-0 transition-all duration-300">
+            <button onclick="closeActiveModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Add Flashcard</h3>
+            <p class="text-xs text-slate-500 mb-4" id="add-card-deck-name">Deck Context: Selected Deck</p>
+            
+            <form onsubmit="handleCreateCard(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Front Word / Term</label>
+                    <input type="text" id="new-card-front" required placeholder="e.g., El libro" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Back Translation / Definition</label>
+                    <input type="text" id="new-card-back" required placeholder="e.g., The book" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Context Sentence (Optional)</label>
+                    <textarea id="new-card-sentence" rows="2" placeholder="e.g., El libro está sobre la mesa." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm resize-none"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs transition">
+                    Save New Flashcard
+                </button>
+            </form>
+        </div>
+
+        <!-- APP CONFIG MODAL -->
+        <div id="config-modal" class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative hidden transform scale-95 opacity-0 transition-all duration-300">
+            <button onclick="closeActiveModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Preferences & Synthesis</h3>
+            <p class="text-xs text-slate-500 mb-4">Customize learning speeds & audio engine options.</p>
+            
+            <div class="space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Auto-Speak Pronunciation</label>
+                    <div class="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span class="text-xs text-slate-500">Read card aloud on flip</span>
+                        <input type="checkbox" id="pref-auto-speak" class="w-4 h-4 accent-brand-500 cursor-pointer" onchange="toggleAutoSpeak(event)">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Speech Engine Voice Rate</label>
+                    <input type="range" id="pref-speak-rate" min="0.5" max="1.5" step="0.1" value="1" class="w-full accent-brand-500" onchange="saveSpeechRate(event)">
+                    <div class="flex justify-between text-[10px] text-slate-400 font-bold mt-1">
+                        <span>SLOW</span>
+                        <span>NORMAL</span>
+                        <span>FAST</span>
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <button onclick="resetAppDatabase()" class="w-full border border-red-200 hover:bg-red-50 text-red-600 text-xs font-bold py-2.5 rounded-xl transition">
+                        Reset Application Database
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- UI Custom Notification Toasts -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <script>
+        // Core State Controller Model
+        let state = {
+            decks: [],
+            activeDeckId: null,
+            activeCardIdx: 0,
+            streak: 1,
+            totalReviewed: 0,
+            autoSpeak: true,
+            speechRate: 1.0,
+            cardFlipped: false
+        };
+
+        // Custom Default Sample Datasets for first runs
+        const defaultDecks = [
+            {
+                id: "deck-spanish-default",
+                title: "Spanish Essentials",
+                lang: "es-ES",
+                desc: "Everyday phrases to survive basic conversations.",
+                cards: [
+                    { id: "c1", front: "Hola", back: "Hello", sentence: "Hola, ¿cómo estás?", box: 1 },
+                    { id: "c2", front: "Gracias", back: "Thank you", sentence: "Muchas gracias por la comida.", box: 1 },
+                    { id: "c3", front: "Por favor", back: "Please", sentence: "Un café, por favor.", box: 1 },
+                    { id: "c4", front: "¿Dónde está el baño?", back: "Where is the bathroom?", sentence: "Disculpe, ¿dónde está el baño?", box: 1 }
+                ]
+            },
+            {
+                id: "deck-japanese-default",
+                title: "Japanese Starter Pack",
+                lang: "ja-JP",
+                desc: "Simple greetings & essential phrases.",
+                cards: [
+                    { id: "j1", front: "こんにちは (Konnichiwa)", back: "Hello / Good afternoon", sentence: "皆さん、こんにちは。", box: 1 },
+                    { id: "j2", front: "ありがとう (Arigatou)", back: "Thank you", sentence: "手伝ってくれて、ありがとう。", box: 1 },
+                    { id: "j3", front: "すみません (Sumimasen)", back: "Excuse me / Sorry", sentence: "すみません、駅はどこですか？", box: 1 }
+                ]
+            }
+        ];
+
+        // Initialization Lifecycles
+        window.addEventListener('DOMContentLoaded', () => {
+            loadApplicationData();
+            setupTouchGestures();
+            renderDecks();
+            selectDeck(state.activeDeckId || (state.decks[0] ? state.decks[0].id : null));
+            updateMetrics();
+        });
+
+        // Local Storage Bindings
+        function loadApplicationData() {
+            const savedDecks = localStorage.getItem('linguacard_decks');
+            const savedStreak = localStorage.getItem('linguacard_streak');
+            const savedReviewed = localStorage.getItem('linguacard_total_reviewed');
+            const savedActiveId = localStorage.getItem('linguacard_active_deck');
+            const savedAutoSpeak = localStorage.getItem('linguacard_auto_speak');
+            const savedSpeechRate = localStorage.getItem('linguacard_speech_rate');
+
+            if (savedDecks) {
+                state.decks = JSON.parse(savedDecks);
+            } else {
+                state.decks = defaultDecks;
+                saveToLocalStorage();
+            }
+
+            state.streak = savedStreak ? parseInt(savedStreak, 10) : 1;
+            state.totalReviewed = savedReviewed ? parseInt(savedReviewed, 10) : 0;
+            state.activeDeckId = savedActiveId || (state.decks[0] ? state.decks[0].id : null);
+            state.autoSpeak = savedAutoSpeak !== "false";
+            state.speechRate = savedSpeechRate ? parseFloat(savedSpeechRate) : 1.0;
+
+            // Sync visual configuration controls
+            document.getElementById('pref-auto-speak').checked = state.autoSpeak;
+            document.getElementById('pref-speak-rate').value = state.speechRate;
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('linguacard_decks', JSON.stringify(state.decks));
+            localStorage.setItem('linguacard_streak', state.streak);
+            localStorage.setItem('linguacard_total_reviewed', state.totalReviewed);
+            localStorage.setItem('linguacard_active_deck', state.activeDeckId || '');
+            localStorage.setItem('linguacard_auto_speak', state.autoSpeak);
+            localStorage.setItem('linguacard_speech_rate', state.speechRate);
+        }
+
+        // Deck Selection & Rendering Controllers
+        function renderDecks() {
+            const container = document.getElementById('deck-list');
+            container.innerHTML = '';
+
+            state.decks.forEach(deck => {
+                const isActive = deck.id === state.activeDeckId;
+                const activeClasses = isActive 
+                    ? 'border-brand-500 bg-brand-50/75 ring-2 ring-brand-100' 
+                    : 'border-slate-100 hover:border-slate-200 bg-white';
+
+                const cardCount = deck.cards.length;
+                const masteredCount = deck.cards.filter(c => c.box >= 3).length;
+
+                const element = document.createElement('div');
+                element.className = `p-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200 ${activeClasses}`;
+                element.onclick = () => selectDeck(deck.id);
+                element.innerHTML = `
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold tracking-wider text-slate-400 uppercase">${deck.lang.split('-')[0]}</span>
+                        <span class="text-[10px] font-semibold text-slate-500 bg-slate-100/80 px-2 py-0.5 rounded-full">${cardCount} Cards</span>
+                    </div>
+                    <h4 class="font-bold text-slate-900 text-sm truncate">${deck.title}</h4>
+                    <p class="text-xs text-slate-500 line-clamp-1 mt-0.5">${deck.desc || 'No description added'}</p>
+                    
+                    ${cardCount > 0 ? `
+                    <div class="mt-3 flex items-center justify-between text-[10px] font-semibold text-slate-500">
+                        <span>Mastery Ratio</span>
+                        <span>${Math.round((masteredCount / cardCount) * 100)}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200/60 h-1 rounded-full mt-1.5 overflow-hidden">
+                        <div class="bg-brand-500 h-full" style="width: ${(masteredCount / cardCount) * 100}%"></div>
+                    </div>
+                    ` : ''}
+                `;
+                container.appendChild(element);
+            });
+        }
+
+        function selectDeck(id) {
+            if (!id && state.decks.length > 0) {
+                id = state.decks[0].id;
+            }
+
+            state.activeDeckId = id;
+            state.activeCardIdx = 0;
+            state.cardFlipped = false;
+            saveToLocalStorage();
+            renderDecks();
+            renderStudySession();
+            updateMetrics();
+        }
+
+        // Study Engine Framework
+        function renderStudySession() {
+            const activeDeck = state.decks.find(d => d.id === state.activeDeckId);
+            const cardContainer = document.getElementById('card-container');
+            const emptyState = document.getElementById('deck-empty-state');
+            const actionControls = document.getElementById('deck-action-controls');
+            const activeTitle = document.getElementById('active-deck-title');
+            const activeDesc = document.getElementById('active-deck-desc');
+            const progressContainer = document.getElementById('study-progress-bar');
+            const progressIndicator = document.getElementById('card-index-indicator');
+
+            // Hard reset card rotation state
+            const cardEl = document.getElementById('flashcard');
+            cardEl.style.transform = '';
+            cardEl.classList.remove('rotate-y-180');
+            state.cardFlipped = false;
+
+            if (!activeDeck) {
+                activeTitle.innerText = "No Active Deck";
+                activeDesc.innerText = "Select or create a deck from the panel to start learning.";
+                cardContainer.classList.add('hidden');
+                actionControls.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                progressContainer.style.width = '0%';
+                progressIndicator.innerText = '0 / 0';
+                return;
+            }
+
+            activeTitle.innerText = activeDeck.title;
+            activeDesc.innerText = activeDeck.desc || "Learn and master vocabulary seamlessly.";
+
+            if (!activeDeck.cards || activeDeck.cards.length === 0) {
+                cardContainer.classList.add('hidden');
+                actionControls.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                progressContainer.style.width = '0%';
+                progressIndicator.innerText = '0 / 0';
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            cardContainer.classList.remove('hidden');
+            actionControls.classList.remove('hidden');
+
+            const currentCard = activeDeck.cards[state.activeCardIdx];
+            if (!currentCard) {
+                // Out of range safely reset index pointer
+                state.activeCardIdx = 0;
+                renderStudySession();
+                return;
+            }
+
+            // Bind Card Data
+            document.getElementById('card-lang-tag').innerText = activeDeck.lang.split('-')[0].toUpperCase();
+            document.getElementById('card-box-tag').innerText = `Box ${currentCard.box || 1}`;
+            document.getElementById('card-front-word').innerText = currentCard.front;
+            document.getElementById('card-back-translation').innerText = currentCard.back;
+            document.getElementById('card-back-sentence').innerText = currentCard.sentence || "No sample sentence provided.";
+
+            // UI Progress Bars update
+            const totalCards = activeDeck.cards.length;
+            const progressPercent = ((state.activeCardIdx) / totalCards) * 100;
+            progressContainer.style.width = `${progressPercent}%`;
+            progressIndicator.innerText = `${state.activeCardIdx + 1} / ${totalCards}`;
+
+            // Automatic pronunciation triggers
+            if (state.autoSpeak) {
+                setTimeout(() => speakText(null, 'front'), 200);
+            }
+        }
+
+        function flipCard() {
+            const cardEl = document.getElementById('flashcard');
+            state.cardFlipped = !state.cardFlipped;
+            if (state.cardFlipped) {
+                cardEl.classList.add('rotate-y-180');
+                if (state.autoSpeak) {
+                    setTimeout(() => speakText(null, 'back'), 150);
+                }
+            } else {
+                cardEl.classList.remove('rotate-y-180');
+            }
+        }
+
+        // Tap gestures wrapper for flipping
+        document.getElementById('card-container').addEventListener('click', (e) => {
+            // Check if user clicked Speech button - prevent flip
+            if (e.target.closest('button')) return;
+            flipCard();
+        });
+
+        // Confidence updates and card updates
+        function markCardConfidence(isConfident) {
+            const activeDeck = state.decks.find(d => d.id === state.activeDeckId);
+            if (!activeDeck || activeDeck.cards.length === 0) return;
+
+            const currentCard = activeDeck.cards[state.activeCardIdx];
+            if (!currentCard) return;
+
+            // Leitner Adaptive Progress Logic
+            if (!currentCard.box) currentCard.box = 1;
+
+            if (isConfident) {
+                // Level Up Mastery
+                if (currentCard.box < 3) {
+                    currentCard.box += 1;
+                }
+                showToast("Great! Leveling up card to Box " + currentCard.box, "success");
+            } else {
+                // Demote back to level 1 for reinforcement
+                currentCard.box = 1;
+                showToast("Card reset to study Box 1", "info");
+            }
+
+            state.totalReviewed += 1;
+            
+            // Advance Queue Iterator
+            if (state.activeCardIdx + 1 < activeDeck.cards.length) {
+                state.activeCardIdx += 1;
+            } else {
+                showToast("🏆 Deck complete! Restarting round.", "success");
+                state.activeCardIdx = 0;
+            }
+
+            saveToLocalStorage();
+            renderStudySession();
+            renderDecks();
+            updateMetrics();
+        }
+
+        // Text To Speech Module
+        function speakText(event, side) {
+            if (event) {
+                event.stopPropagation(); // Block Event Flipping
+            }
+
+            if (!('speechSynthesis' in window)) {
+                showToast("Text-to-speech not supported on this browser.", "error");
+                return;
+            }
+
+            const activeDeck = state.decks.find(d => d.id === state.activeDeckId);
+            if (!activeDeck) return;
+
+            const currentCard = activeDeck.cards[state.activeCardIdx];
+            if (!currentCard) return;
+
+            let phrase = side === 'front' ? currentCard.front : currentCard.back;
+            let langCode = side === 'front' ? activeDeck.lang : 'en-US'; // Back defaults to native English translations
+
+            // Clean clean-up text for Speech Synthesizers
+            phrase = phrase.replace(/\(.*?\)/g, "").trim();
+
+            // Cancel any current playbacks to avoid overlapping
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(phrase);
+            utterance.lang = langCode;
+            utterance.rate = state.speechRate;
+
+            // Voice matching finder
+            const voices = window.speechSynthesis.getVoices();
+            const matchedVoice = voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
+            if (matchedVoice) {
+                utterance.voice = matchedVoice;
+            }
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Ensure Chrome and other engines register speech services
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+        }
+
+        // Touch Drag & Swipe physics listeners
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        function setupTouchGestures() {
+            const cardEl = document.getElementById('flashcard');
+            const cardContainer = document.getElementById('card-container');
+
+            cardContainer.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            cardContainer.addEventListener('touchmove', (e) => {
+                if (e.target.closest('button')) return;
+                let currentX = e.changedTouches[0].screenX;
+                let diff = currentX - touchStartX;
+
+                // Move with drag
+                if (Math.abs(diff) < 150) {
+                    cardEl.style.transform = `translateX(${diff}px) rotateY(${state.cardFlipped ? 180 : 0}deg) rotate(${diff * 0.05}deg)`;
+                }
+            }, { passive: true });
+
+            cardContainer.addEventListener('touchend', (e) => {
+                if (e.target.closest('button')) return;
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipePhysics();
+            }, { passive: true });
+        }
+
+        function handleSwipePhysics() {
+            const cardEl = document.getElementById('flashcard');
+            const diff = touchEndX - touchStartX;
+            const swipeThreshold = 100;
+
+            if (diff > swipeThreshold) {
+                // Swiped Right - CONFIDENT
+                cardEl.style.transform = `translateX(250px) rotate(15deg)`;
+                cardEl.style.opacity = '0';
+                setTimeout(() => {
+                    markCardConfidence(true);
+                }, 200);
+            } else if (diff < -swipeThreshold) {
+                // Swiped Left - RE-STUDY
+                cardEl.style.transform = `translateX(-250px) rotate(-15deg)`;
+                cardEl.style.opacity = '0';
+                setTimeout(() => {
+                    markCardConfidence(false);
+                }, 200);
+            } else {
+                // Snap Back
+                cardEl.style.transform = `rotateY(${state.cardFlipped ? 180 : 0}deg)`;
+            }
+        }
+
+        // Database Control Operations & Forms
+        function openNewDeckModal() {
+            openModal('deck-modal');
+        }
+
+        function openAddCardModal() {
+            const activeDeck = state.decks.find(d => d.id === state.activeDeckId);
+            if (!activeDeck) {
+                showToast("Please create a deck first.", "info");
+                return;
+            }
+            document.getElementById('add-card-deck-name').innerText = `Adding card to: ${activeDeck.title}`;
+            openModal('card-modal');
+        }
+
+        function openConfigModal() {
+            openModal('config-modal');
+        }
+
+        function openModal(modalId) {
+            const backdrop = document.getElementById('modal-backdrop');
+            const target = document.getElementById(modalId);
+            
+            backdrop.classList.remove('hidden');
+            target.classList.remove('hidden');
+            
+            setTimeout(() => {
+                backdrop.classList.add('opacity-100');
+                target.classList.remove('scale-95', 'opacity-0');
+                target.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeActiveModal() {
+            const backdrop = document.getElementById('modal-backdrop');
+            const modals = ['deck-modal', 'card-modal', 'config-modal'];
+            
+            backdrop.classList.remove('opacity-100');
+            
+            modals.forEach(id => {
+                const modal = document.getElementById(id);
+                if (!modal.classList.contains('hidden')) {
+                    modal.classList.add('scale-95', 'opacity-0');
+                    modal.classList.remove('scale-100', 'opacity-100');
+                }
+            });
+
+            setTimeout(() => {
+                backdrop.classList.add('hidden');
+                modals.forEach(id => document.getElementById(id).classList.add('hidden'));
+            }, 300);
+        }
+
+        // Close when clicking outside modal box
+        document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal-backdrop')) {
+                closeActiveModal();
+            }
+        });
+
+        // Form Event Submissions
+        function handleCreateDeck(event) {
+            event.preventDefault();
+            const title = document.getElementById('new-deck-title').value;
+            const lang = document.getElementById('new-deck-lang').value;
+            const desc = document.getElementById('new-deck-desc').value;
+
+            const newDeck = {
+                id: `deck-${Date.now()}`,
+                title: title,
+                lang: lang,
+                desc: desc,
+                cards: []
+            };
+
+            state.decks.push(newDeck);
+            state.activeDeckId = newDeck.id;
+            saveToLocalStorage();
+            
+            // Clean forms
+            document.getElementById('new-deck-title').value = '';
+            document.getElementById('new-deck-desc').value = '';
+
+            closeActiveModal();
+            renderDecks();
+            selectDeck(newDeck.id);
+            showToast("Created learning deck successfully!", "success");
+        }
+
+        function handleCreateCard(event) {
+            event.preventDefault();
+            const activeDeck = state.decks.find(d => d.id === state.activeDeckId);
+            if (!activeDeck) return;
+
+            const front = document.getElementById('new-card-front').value;
+            const back = document.getElementById('new-card-back').value;
+            const sentence = document.getElementById('new-card-sentence').value;
+
+            const newCard = {
+                id: `card-${Date.now()}`,
+                front: front,
+                back: back,
+                sentence: sentence,
+                box: 1
+            };
+
+            activeDeck.cards.push(newCard);
+            saveToLocalStorage();
+
+            // Clear Input Elements
+            document.getElementById('new-card-front').value = '';
+            document.getElementById('new-card-back').value = '';
+            document.getElementById('new-card-sentence').value = '';
+
+            closeActiveModal();
+            renderDecks();
+            renderStudySession();
+            showToast("New flashcard created!", "success");
+        }
+
+        function deleteActiveDeck() {
+            if (!state.activeDeckId) return;
+            const activeDeck = state.decks.find(d => d.id === state.activeDeckId);
+            
+            const confirmed = confirm(`Are you sure you want to permanently delete the deck "${activeDeck.title}"?`);
+            if (!confirmed) return;
+
+            state.decks = state.decks.filter(d => d.id !== state.activeDeckId);
+            state.activeDeckId = state.decks[0] ? state.decks[0].id : null;
+            
+            saveToLocalStorage();
+            renderDecks();
+            selectDeck(state.activeDeckId);
+            showToast("Deck successfully deleted.", "info");
+        }
+
+        // Utility Functions & App Settings
+        function toggleAutoSpeak(e) {
+            state.autoSpeak = e.target.checked;
+            saveToLocalStorage();
+            showToast(`Auto-Pronunciation: ${state.autoSpeak ? 'Enabled' : 'Disabled'}`, "info");
+        }
+
+        function saveSpeechRate(e) {
+            state.speechRate = parseFloat(e.target.value);
+            saveToLocalStorage();
+        }
+
+        function updateMetrics() {
+            document.getElementById('stat-reviewed').innerText = state.totalReviewed;
+            document.getElementById('streak-counter').innerText = `${state.streak} Day Streak`;
+
+            // Calculate overall mastery rates across all active decks
+            let totalCards = 0;
+            let masteredCards = 0;
+
+            state.decks.forEach(d => {
+                totalCards += d.cards.length;
+                masteredCards += d.cards.filter(c => c.box >= 3).length;
+            });
+
+            const masteryPercent = totalCards > 0 ? Math.round((masteredCards / totalCards) * 100) : 0;
+            document.getElementById('stat-mastery').innerText = `${masteryPercent}%`;
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.decks));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `linguacard-decks-export-${Date.now()}.json`);
+            dlAnchorElem.click();
+            showToast("Backup generated and downloaded!", "success");
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedDecks = JSON.parse(e.target.result);
+                    if (Array.isArray(importedDecks)) {
+                        state.decks = importedDecks;
+                        state.activeDeckId = importedDecks[0] ? importedDecks[0].id : null;
+                        saveToLocalStorage();
+                        renderDecks();
+                        selectDeck(state.activeDeckId);
+                        showToast("Decks imported successfully!", "success");
+                    } else {
+                        showToast("Invalid backup file structure.", "error");
+                    }
+                } catch (err) {
+                    showToast("Error parsing file.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function resetAppDatabase() {
+            const confirmReset = confirm("Warning! This will clear all custom cards and reset to default decks. Continue?");
+            if (!confirmReset) return;
+
+            localStorage.clear();
+            loadApplicationData();
+            closeActiveModal();
+            renderDecks();
+            selectDeck(state.decks[0].id);
+            updateMetrics();
+            showToast("Database successfully reset", "info");
+        }
+
+        // Beautiful Toast Notifications Controller
+        function showToast(message, type = "success") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgClass = type === "success" ? "bg-emerald-50 text-emerald-800 border-emerald-200" :
+                            type === "error" ? "bg-rose-50 text-rose-800 border-rose-200" :
+                            "bg-blue-50 text-blue-800 border-blue-200";
+
+            const icon = type === "success" ? "fa-circle-check" :
+                         type === "error" ? "fa-triangle-exclamation" :
+                         "fa-circle-info";
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg transition-all duration-300 transform translate-y-2 opacity-0 text-xs font-semibold pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-sm"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate In
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            // Close Timer
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
