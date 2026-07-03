@@ -66,7 +66,11 @@ Assign a title, a description, and strictly define the Target Language Tag (e.g.
  Grade Confidence: Click the green Know It! button (or swipe right) if you remembered the word easily[cite: 1].Click the red Hard / Study button (or swipe left) if you struggled[cite: 1]. Monitor Stats: Watch your daily streak (indicated by the fire icon) and your total review count climb in the sidebar metrics panel[cite: 1].
 4. Application ConfigurationClick the sliders icon (fa-sliders) in the top navigation bar to open the Preferences & Synthesis modal[cite: 1]. Here, you can toggle the auto-speak functionality, adjust the voice reading speed, or perform a hard reset of the application database[cite: 1].
 
-📁 File Structure OverviewPlaintext📁 linguacard-pro/
+📁 File Structure Overview
+
+Plaintext
+
+📁 linguacard-pro/
  ├── 📄 linguacard_pro.html    # Core application (HTML Structure, Tailwind Config, CSS, Vanilla JS)
  └── 📄 README.md              # Project documentation and specifications
 
